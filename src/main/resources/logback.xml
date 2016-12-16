@@ -4,6 +4,48 @@
     <!-- point logback to properties, to read Spring variables -->
     <property resource="application.properties" />
 
+    <appender name="FILE_TMP" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+		<filter class="ch.qos.logback.core.filter.EvaluatorFilter">      
+			<evaluator>
+				<expression>return message.contains("WITH_TX");</expression>
+			</evaluator>
+			<OnMismatch>DENY</OnMismatch>
+			<OnMatch>ACCEPT</OnMatch>
+		</filter>
+
+        <file>${logs.dir}/tx.log</file>
+        <encoder>
+            <pattern>%d %-5level [%thread] %logger{35} - %msg%n</pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${logs.dir}/tx-%d{yyyy-MM-dd_HH}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <property resource="application.properties" />
+
+    <appender name="FILE_SPL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <file>${logs.dir}/spring.log</file>
+        <encoder>
+            <pattern>%d %-5level [%thread] %logger{35} - %msg%n</pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${logs.dir}/spring-%d{yyyy-MM-dd_HH}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+    </appender>
+
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${logs.dir}/state.log</file>
         <!--
@@ -37,6 +79,10 @@
         </encoder>
     </appender>
 
+    <root level="WARN">
+        <appender-ref ref="FILE_TMP"/>
+    </root>
+
     <root level="DEBUG">
         <appender-ref ref="STDOUT"/>
     </root>
@@ -44,6 +90,17 @@
     <root level="ERROR">
         <appender-ref ref="FILE"/>
     </root>
+
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+    <logger name="guru.springframework.controllers" level="DEBUG" additivity="false">
+<!--
+        <appender-ref ref="CONSOLE"/>
+-->
+        <appender-ref ref="FILE_SPL"/>
+    </logger>
+    <logger name="guru.springframework.helpers" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE_SPL"/>
+    </logger>
 
     <logger level="DEBUG" name="contracts"/>
     <logger level="DEBUG" name="keystore"/>

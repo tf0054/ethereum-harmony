@@ -36,6 +36,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import org.ethereum.core.Block;
+import org.ethereum.core.Transaction;
+import org.ethereum.net.eth.message.EthMessage;
+import org.ethereum.net.eth.message.NewBlockMessage;
+import org.spongycastle.util.encoders.Hex;
+import com.ethercamp.harmony.dto.Tx;
+
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.text.NumberFormat;
@@ -68,6 +75,7 @@ public class PeersService {
     @Autowired
     private Environment env;
 
+private StringBuffer toStringBuff = new StringBuffer();
 
     @PostConstruct
     private void postConstruct() {
@@ -78,6 +86,34 @@ public class PeersService {
                 // notify client about new block
                 // using PeerDTO as it already has both country fields
                 if (message.getCommand() == EthMessageCodes.NEW_BLOCK) {
+
+EthMessage y = (EthMessage) message;
+NewBlockMessage x = (NewBlockMessage) y;
+Block b = x.getBlock();
+
+if(!b.getTransactionsList().isEmpty()) {
+try{
+            toStringBuff.setLength(0);
+            for (Transaction tx : b.getTransactionsList()) {
+                toStringBuff.append("0x");
+                toStringBuff.append(Hex.toHexString(tx.getSender()));
+                toStringBuff.append(", 0x");
+                toStringBuff.append(Hex.toHexString(tx.getReceiveAddress()));
+                toStringBuff.append(", ");
+                toStringBuff.append(tx);
+                toStringBuff.append("\n");
+            clientMessageService.sendToTopic("/topic/tx", createTxDTO(
+              Hex.toHexString(tx.getSender()),
+              Hex.toHexString(tx.getReceiveAddress()),
+              tx.toString() ));
+            }
+            log.warn("NEW_BLOCK_WITH_TX: " + toStringBuff.toString());
+    } catch (Exception e) {
+            log.warn("ERR: " + e.toString());
+    }
+        } else {
+            //log.warn("NEW_BLOCK: " + b.toString());
+}
                     clientMessageService.sendToTopic("/topic/newBlockFrom", createPeerDTO(
                             channel.getPeerId(),
                             channel.getInetSocketAddress().getHostName(),
@@ -168,6 +204,10 @@ public class PeersService {
         } else {
             return String.join(delimiter, countryRow, details, supports, "", blockNumber);
         }
+    }
+
+    private Tx createTxDTO(String from, String to, String log) {
+      return new Tx(from, to, log);
     }
 
     private PeerDTO createPeerDTO(String peerId, String ip, long lastPing, double avgLatency, int reputation,

@@ -307,6 +307,7 @@
                     $stomp.subscribe('/topic/currentSystemLogs', jsonParseAndBroadcast('currentSystemLogs'));
                     $stomp.subscribe('/topic/currentBlocks', jsonParseAndBroadcast('currentBlocksEvent'));
                     $stomp.subscribe('/topic/confirmTransaction', onConfirmedTransaction);
+                    $stomp.subscribe('/topic/tx', console.log);
 
                     updatePageSubscriptions();
 
