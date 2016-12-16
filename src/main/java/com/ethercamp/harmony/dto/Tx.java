@@ -21,15 +21,17 @@ package com.ethercamp.harmony.dto;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 
+import java.math.BigInteger;
+
 /**
  * Created by Stan Reshetnyk on 09.08.16.
  */
 @Value
 @AllArgsConstructor
 public class Tx {
-
     private final String from;
     private final String to;
-
+    private final String value;
+    private final String data;
     private final String log;
 }

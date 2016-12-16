@@ -42,6 +42,7 @@ import org.ethereum.net.eth.message.EthMessage;
 import org.ethereum.net.eth.message.NewBlockMessage;
 import org.spongycastle.util.encoders.Hex;
 import com.ethercamp.harmony.dto.Tx;
+import org.ethereum.util.ByteUtil;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -76,6 +77,8 @@ public class PeersService {
     private Environment env;
 
 private StringBuffer toStringBuff = new StringBuffer();
+private StringBuffer strbuffTo = new StringBuffer();
+private StringBuffer strbuffFrom = new StringBuffer();
 
     @PostConstruct
     private void postConstruct() {
@@ -91,26 +94,56 @@ EthMessage y = (EthMessage) message;
 NewBlockMessage x = (NewBlockMessage) y;
 Block b = x.getBlock();
 
+String value = "";
+String data  = "";
+
 if(!b.getTransactionsList().isEmpty()) {
-try{
-            toStringBuff.setLength(0);
             for (Transaction tx : b.getTransactionsList()) {
+                strbuffTo.setLength(0);
+                strbuffFrom.setLength(0);
+                toStringBuff.setLength(0);
+try{
+
                 toStringBuff.append("0x");
                 toStringBuff.append(Hex.toHexString(tx.getSender()));
                 toStringBuff.append(", 0x");
                 toStringBuff.append(Hex.toHexString(tx.getReceiveAddress()));
+                toStringBuff.append(", 0x");
+                toStringBuff.append(Hex.toHexString(tx.getHash()));
                 toStringBuff.append(", ");
-                toStringBuff.append(tx);
+                if(tx.getValue() == null){
+                  value = "-";
+                  toStringBuff.append("-");
+                } else {
+                  value = ByteUtil.bytesToBigInteger(tx.getValue()).toString();
+                  toStringBuff.append(value);
+                }
+                toStringBuff.append(", ");
+                if(tx.getData() == null){
+                  data = "-";
+                  toStringBuff.append("-");
+                } else {
+                  data = Hex.toHexString(tx.getData());
+                  toStringBuff.append(data);
+                }
+                toStringBuff.append(", ");
+                toStringBuff.append(tx.toString().substring(16));
                 toStringBuff.append("\n");
-            clientMessageService.sendToTopic("/topic/tx", createTxDTO(
-              Hex.toHexString(tx.getSender()),
-              Hex.toHexString(tx.getReceiveAddress()),
-              tx.toString() ));
-            }
-            log.warn("NEW_BLOCK_WITH_TX: " + toStringBuff.toString());
+
+                strbuffTo.append("0x");
+                strbuffTo.append(Hex.toHexString(tx.getReceiveAddress()));
+                strbuffFrom.append("0x");
+                strbuffFrom.append(Hex.toHexString(tx.getSender()));
+                clientMessageService.sendToTopic("/topic/tx",
+                  createTxDTO(strbuffFrom.toString(),
+                              strbuffTo.toString(),
+                              value, data,
+                              tx.toString().substring(16) ) );
+                log.warn("NEW_BLOCK_WITH_TX: " + toStringBuff.toString());
     } catch (Exception e) {
-            log.warn("ERR: " + e.toString());
+            log.warn("ERR_WITH_TX: " + e.toString() + "," + tx);
     }
+            }
         } else {
             //log.warn("NEW_BLOCK: " + b.toString());
 }
@@ -206,8 +239,8 @@ try{
         }
     }
 
-    private Tx createTxDTO(String from, String to, String log) {
-      return new Tx(from, to, log);
+    private Tx createTxDTO(String from, String to, String value, String data, String log) {
+      return new Tx(from, to, value, data, log);
     }
 
     private PeerDTO createPeerDTO(String peerId, String ip, long lastPing, double avgLatency, int reputation,
