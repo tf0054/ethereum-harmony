@@ -29,9 +29,12 @@ import java.math.BigInteger;
 @Value
 @AllArgsConstructor
 public class Tx {
+    private final long num;
     private final String from;
     private final String to;
+    private final String hash;
     private final String value;
     private final String data;
     private final String log;
+    private final long time;
 }

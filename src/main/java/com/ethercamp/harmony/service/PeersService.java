@@ -79,6 +79,7 @@ public class PeersService {
 private StringBuffer toStringBuff = new StringBuffer();
 private StringBuffer strbuffTo = new StringBuffer();
 private StringBuffer strbuffFrom = new StringBuffer();
+private StringBuffer strbuffHash = new StringBuffer();
 
     @PostConstruct
     private void postConstruct() {
@@ -94,16 +95,18 @@ EthMessage y = (EthMessage) message;
 NewBlockMessage x = (NewBlockMessage) y;
 Block b = x.getBlock();
 
-String value = "";
-String data  = "";
-
 if(!b.getTransactionsList().isEmpty()) {
+  String value = "";
+  String data  = "";
+
             for (Transaction tx : b.getTransactionsList()) {
                 strbuffTo.setLength(0);
                 strbuffFrom.setLength(0);
+                strbuffHash.setLength(0);
                 toStringBuff.setLength(0);
-try{
-
+               try{
+                toStringBuff.append(b.getNumber());
+                toStringBuff.append(", ");
                 toStringBuff.append("0x");
                 toStringBuff.append(Hex.toHexString(tx.getSender()));
                 toStringBuff.append(", 0x");
@@ -112,20 +115,18 @@ try{
                 toStringBuff.append(Hex.toHexString(tx.getHash()));
                 toStringBuff.append(", ");
                 if(tx.getValue() == null){
-                  value = "-";
-                  toStringBuff.append("-");
+                  value = "";
                 } else {
                   value = ByteUtil.bytesToBigInteger(tx.getValue()).toString();
-                  toStringBuff.append(value);
                 }
+                toStringBuff.append(value);
                 toStringBuff.append(", ");
                 if(tx.getData() == null){
-                  data = "-";
-                  toStringBuff.append("-");
+                  data = "";
                 } else {
                   data = Hex.toHexString(tx.getData());
-                  toStringBuff.append(data);
                 }
+                toStringBuff.append(data);
                 toStringBuff.append(", ");
                 toStringBuff.append(tx.toString().substring(16));
                 toStringBuff.append("\n");
@@ -134,11 +135,16 @@ try{
                 strbuffTo.append(Hex.toHexString(tx.getReceiveAddress()));
                 strbuffFrom.append("0x");
                 strbuffFrom.append(Hex.toHexString(tx.getSender()));
+                strbuffHash.append("0x");
+                strbuffHash.append(Hex.toHexString(tx.getHash()));
                 clientMessageService.sendToTopic("/topic/tx",
-                  createTxDTO(strbuffFrom.toString(),
+                  createTxDTO(b.getNumber(),
+                              strbuffFrom.toString(),
                               strbuffTo.toString(),
+                              strbuffHash.toString(),
                               value, data,
-                              tx.toString().substring(16) ) );
+                              tx.toString().substring(16),
+                              b.getTimestamp() ));
                 log.warn("NEW_BLOCK_WITH_TX: " + toStringBuff.toString());
     } catch (Exception e) {
             log.warn("ERR_WITH_TX: " + e.toString() + "," + tx);
@@ -239,8 +245,8 @@ try{
         }
     }
 
-    private Tx createTxDTO(String from, String to, String value, String data, String log) {
-      return new Tx(from, to, value, data, log);
+    private Tx createTxDTO(long n, String from, String to, String hash, String value, String data, String log, long time) {
+      return new Tx(n, from, to, hash, value, data, log, time);
     }
 
     private PeerDTO createPeerDTO(String peerId, String ip, long lastPing, double avgLatency, int reputation,
