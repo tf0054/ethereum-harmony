@@ -40,6 +40,7 @@ import org.ethereum.core.Block;
 import org.ethereum.core.Transaction;
 import org.ethereum.net.eth.message.EthMessage;
 import org.ethereum.net.eth.message.NewBlockMessage;
+import org.ethereum.net.eth.message.TransactionsMessage;
 import org.spongycastle.util.encoders.Hex;
 import com.ethercamp.harmony.dto.Tx;
 import org.ethereum.util.ByteUtil;
@@ -76,10 +77,6 @@ public class PeersService {
     @Autowired
     private Environment env;
 
-private StringBuffer toStringBuff = new StringBuffer();
-private StringBuffer strbuffTo = new StringBuffer();
-private StringBuffer strbuffFrom = new StringBuffer();
-private StringBuffer strbuffHash = new StringBuffer();
 
     @PostConstruct
     private void postConstruct() {
@@ -87,6 +84,12 @@ private StringBuffer strbuffHash = new StringBuffer();
         ethereum.addListener(new EthereumListenerAdapter() {
             @Override
             public void onRecvMessage(Channel channel, Message message) {
+StringBuffer toStringBuff = new StringBuffer();
+StringBuffer strbuffTo = new StringBuffer();
+StringBuffer strbuffFrom = new StringBuffer();
+StringBuffer strbuffHash = new StringBuffer();
+  String value = "";
+  String data  = "";
                 // notify client about new block
                 // using PeerDTO as it already has both country fields
                 if (message.getCommand() == EthMessageCodes.NEW_BLOCK) {
@@ -96,8 +99,6 @@ NewBlockMessage x = (NewBlockMessage) y;
 Block b = x.getBlock();
 
 if(!b.getTransactionsList().isEmpty()) {
-  String value = "";
-  String data  = "";
 
             for (Transaction tx : b.getTransactionsList()) {
                 strbuffTo.setLength(0);
@@ -142,8 +143,11 @@ if(!b.getTransactionsList().isEmpty()) {
                               strbuffFrom.toString(),
                               strbuffTo.toString(),
                               strbuffHash.toString(),
-                              value, data,
-                              tx.toString().substring(16),
+                              value,
+                              Integer.toString(data.length()),
+                              //data,
+                              "",
+                              //tx.toString().substring(16),
                               b.getTimestamp() ));
                 log.warn("NEW_BLOCK_WITH_TX: " + toStringBuff.toString());
     } catch (Exception e) {
@@ -151,7 +155,7 @@ if(!b.getTransactionsList().isEmpty()) {
     }
             }
         } else {
-            //log.warn("NEW_BLOCK: " + b.toString());
+            log.warn("NEW_BLOCK_EMPTY: " + b.toString());
 }
                     clientMessageService.sendToTopic("/topic/newBlockFrom", createPeerDTO(
                             channel.getPeerId(),
@@ -161,9 +165,54 @@ if(!b.getTransactionsList().isEmpty()) {
                             true,
                             null,
                             channel.getEthHandler().getBestKnownBlock().getNumber()));
+                } else if (message.getCommand() == EthMessageCodes.TRANSACTIONS) {
+EthMessage y = (EthMessage) message;
+TransactionsMessage x = (TransactionsMessage) y;
+                log.warn("TRANSACTIONS: " + x.toString());
+
+            for (Transaction tx : x.getTransactions()) {
+                strbuffTo.setLength(0);
+                strbuffFrom.setLength(0);
+                strbuffHash.setLength(0);
+               try{
+
+                if(tx.getReceiveAddress() == null){
+			strbuffTo.append("");
+                } else {
+			strbuffTo.append("0x");
+			strbuffTo.append(Hex.toHexString(tx.getReceiveAddress()));
+		}
+                strbuffFrom.append("0x");
+                strbuffFrom.append(Hex.toHexString(tx.getSender()));
+                strbuffHash.append("0x");
+                strbuffHash.append(Hex.toHexString(tx.getHash()));
+
+                if(tx.getValue() == null){
+                  value = "";
+                } else {
+                  value = ByteUtil.bytesToBigInteger(tx.getValue()).toString();
                 }
+                if(tx.getData() == null){
+                  data = "";
+                } else {
+                  data = Hex.toHexString(tx.getData());
+                }
+                clientMessageService.sendToTopic("/topic/tx",
+                createTxDTO(-1,
+                              strbuffFrom.toString(),
+                              strbuffTo.toString(),
+                              strbuffHash.toString(),
+                              value,
+                              Integer.toString(data.length()),
+                              //data,
+                              "",
+                              //tx.toString().substring(16),
+                              System.currentTimeMillis() / 1000L ));
+    } catch (Exception e) {
+            log.warn("TRANSACTIONS_ERR: " + e.toString() + "," + tx);
+    }
             }
-        });
+        }}});
 
         createGeoDatabase();
     }
